@@ -83,7 +83,12 @@ def register():
         conn.commit()
         conn.close()
         return (
-            jsonify({"message": "User registered", "token": token, "role": role}),
+            jsonify(
+                {
+                    "role": role,
+                    "token": token,
+                }
+            ),
             201,
         )
     except sqlite3.IntegrityError:
@@ -105,7 +110,12 @@ def login():
         conn.execute("UPDATE users SET token = ? WHERE id = ?", (token, user["id"]))
         conn.commit()
         conn.close()
-        return jsonify({"token": token, "role": user["role"]})
+        return jsonify(
+            {
+                "role": user["role"],
+                "token": token,
+            }
+        )
     else:
         conn.close()
         return jsonify({"error": "Invalid credentials"}), 401
