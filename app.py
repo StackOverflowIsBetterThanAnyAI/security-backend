@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import sqlite3
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,6 +12,7 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 app = Flask(__name__)
+CORS(app)
 
 
 def get_db_connection():
