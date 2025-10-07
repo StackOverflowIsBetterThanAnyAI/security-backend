@@ -67,9 +67,13 @@ def token_required(role_minimum="member"):
         @wraps(f)
         def wrapper(*args, **kwargs):
             token = request.headers.get("Authorization")
+            if token and token.startswith("Bearer "):
+                token = token.replace("Bearer ", "")
+            else:
+                token = request.args.get("token")
+
             if not token:
                 return jsonify({"error": "Token required"}), 401
-            token = token.replace("Bearer ", "")
 
             with get_db_connection() as conn:
                 user = conn.execute(
