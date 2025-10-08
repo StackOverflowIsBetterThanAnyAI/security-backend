@@ -207,7 +207,9 @@ def list_images(current_user):
 
     page_size = PAGE_SIZE
 
-    files = sorted([f for f in os.listdir(IMAGE_FOLDER_LOCATION)])
+    all_files = os.listdir(IMAGE_FOLDER_LOCATION)
+    valid_files = [f for f in all_files if FILENAME_PATTERN.match(f)]
+    files = sorted(valid_files)
     start = (page - 1) * page_size
     end = start + page_size
     paginated = files[start:end]
