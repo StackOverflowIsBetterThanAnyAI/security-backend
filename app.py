@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from functools import wraps
 import os
+import re
 
 from folder_data import IMAGE_FOLDER_LOCATION
 
@@ -14,6 +15,14 @@ load_dotenv()
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9]{5,20}$")
+PASSWORD_PATTERN = re.compile(r"^[^\s]{8,25}$")
+
+FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+?\.jpg$")
+
+PAGE_SIZE = 36
+MAX_PAGE = 56
 
 app = Flask(__name__)
 CORS(app)
@@ -101,11 +110,33 @@ def token_required(role_minimum="member"):
 @app.route("/register", methods=["POST"])
 def register():
     data = request.json
+
+    if not data:
+        return jsonify({"error": "Invalid request format"}), 400
+
     name = data.get("name")
     password = data.get("password")
 
     if not name or not password:
         return jsonify({"error": "Name and password required"}), 400
+
+    if not USERNAME_PATTERN.match(name):
+        return (
+            jsonify(
+                {"error": "Invalid name format. Must be 5-20 alphanumeric characters."}
+            ),
+            400,
+        )
+
+    if not PASSWORD_PATTERN.match(password):
+        return (
+            jsonify(
+                {
+                    "error": "Invalid password format. Must be 8-25 characters and contain no spaces."
+                }
+            ),
+            400,
+        )
 
     role = "user"
     hashed_pw = generate_password_hash(password)
@@ -131,8 +162,18 @@ def register():
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
+
+    if not data:
+        return jsonify({"error": "Invalid request format"}), 400
+
     name = data.get("name")
     password = data.get("password")
+
+    if not name or not password:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    if not USERNAME_PATTERN.match(name) or not PASSWORD_PATTERN.match(password):
+        return jsonify({"error": "Invalid credentials"}), 401
 
     with get_db_connection() as conn:
         user = conn.execute("SELECT * FROM users WHERE name = ?", (name,)).fetchone()
@@ -149,8 +190,22 @@ def login():
 @app.route("/images", methods=["GET"])
 @token_required(role_minimum="member")
 def list_images(current_user):
-    page = int(request.args.get("page", 1))
-    page_size = int(request.args.get("page_size", 36))
+    page_param = request.args.get("page")
+    try:
+        page = int(page_param) if page_param is not None else 1
+    except ValueError:
+        return jsonify({"error": "Page must be a valid integer."}), 400
+
+    if page < 1:
+        page = 1
+
+    if page > MAX_PAGE:
+        return (
+            jsonify({"error": f"Page number exceeds the maximum allowed page."}),
+            400,
+        )
+
+    page_size = PAGE_SIZE
 
     files = sorted([f for f in os.listdir(IMAGE_FOLDER_LOCATION)])
     start = (page - 1) * page_size
@@ -171,6 +226,9 @@ def list_images(current_user):
 @app.route("/image/<filename>")
 @token_required(role_minimum="member")
 def get_image(current_user, filename):
+    if not FILENAME_PATTERN.match(filename):
+        return jsonify({"error": "Resource not found or invalid format."}), 404
+
     return send_from_directory(IMAGE_FOLDER_LOCATION, filename)
 
 
