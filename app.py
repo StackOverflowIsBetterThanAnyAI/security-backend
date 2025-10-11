@@ -154,7 +154,7 @@ def register():
     except sqlite3.IntegrityError:
         return jsonify({"error": "User already exists"}), 400
 
-    except sqlite3.OperationalError as e:
+    except sqlite3.OperationalError:
         return jsonify({"error": "Database busy, please retry."}), 500
 
 
