@@ -297,8 +297,12 @@ def update_user_role(current_user):
 @app.route("/users", methods=["GET"])
 @token_required(role_minimum="admin")
 def get_users(current_user):
+    admin_name = current_user["name"]
+
     with get_db_connection() as conn:
-        users = conn.execute("SELECT id, name, role FROM users").fetchall()
+        users = conn.execute(
+            "SELECT id, name, role FROM users WHERE name != ?", (admin_name,)
+        ).fetchall()
 
     return jsonify([dict(user) for user in users])
 
