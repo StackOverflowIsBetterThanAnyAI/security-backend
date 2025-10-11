@@ -234,7 +234,66 @@ def get_image(current_user, filename):
     return send_from_directory(IMAGE_FOLDER_LOCATION, filename)
 
 
-# === get all users (for testing only) ===
+# ============ ADMIN ROUTES ============
+
+
+# === Update User Role ===
+@app.route("/user/role", methods=["PATCH"])
+@token_required(role_minimum="admin")
+def update_user_role(current_user):
+    data = request.json
+
+    if not data:
+        return jsonify({"error": "Invalid request format"}), 400
+
+    target_name = data.get("name")
+    new_role = data.get("role")
+
+    if not target_name or new_role not in ["user", "member"]:
+        return (
+            jsonify({"error": "Missing target name or invalid role."}),
+            400,
+        )
+
+    if target_name == current_user["name"]:
+        return jsonify({"error": "Cannot change your own role via API."}), 400
+
+    if target_name == ADMIN_USERNAME and new_role != "admin":
+        return jsonify({"error": "Cannot change the primary admin role."}), 400
+
+    try:
+        with get_db_connection() as conn:
+            target_user = conn.execute(
+                "SELECT * FROM users WHERE name = ?", (target_name,)
+            ).fetchone()
+
+            if not target_user:
+                return jsonify({"error": "User not found."}), 404
+
+            if target_user["role"] == "admin":
+                return (
+                    jsonify(
+                        {"error": f"Cannot modify the role of another admin account."}
+                    ),
+                    400,
+                )
+
+            conn.execute(
+                "UPDATE users SET role = ?, token = NULL WHERE name = ?",
+                (new_role, target_name),
+            )
+            conn.commit()
+
+            return (
+                jsonify({"message": "Role of user was updated."}),
+                200,
+            )
+
+    except Exception:
+        return jsonify({"error": "Database error."}), 500
+
+
+# === Get All Users ===
 @app.route("/users", methods=["GET"])
 @token_required(role_minimum="admin")
 def get_users(current_user):
