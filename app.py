@@ -155,7 +155,7 @@ def register():
         return jsonify({"error": "User already exists"}), 400
 
     except sqlite3.OperationalError as e:
-        return jsonify({"error": f"Database busy, please retry. ({str(e)})"}), 500
+        return jsonify({"error": "Database busy, please retry."}), 500
 
 
 # === Login ===
@@ -201,7 +201,7 @@ def list_images(current_user):
 
     if page > MAX_PAGE:
         return (
-            jsonify({"error": f"Page number exceeds the maximum allowed page."}),
+            jsonify({"error": "Page number exceeds the maximum allowed page."}),
             400,
         )
 
