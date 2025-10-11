@@ -308,6 +308,62 @@ def update_user_role(current_user):
         return jsonify({"error": "Database error."}), 500
 
 
+# === Delete User ===
+@app.route("/user/delete", methods=["DELETE"])
+@token_required(role_minimum="admin")
+def delete_user(current_user):
+    data = request.json
+
+    if not data:
+        return jsonify({"error": "Invalid request format"}), 400
+
+    target_name = data.get("name")
+
+    if not target_name:
+        return jsonify({"error": "Missing target name."}), 400
+
+    if target_name == current_user["name"] or target_name == ADMIN_USERNAME:
+        return (
+            jsonify({"error": "Cannot delete account."}),
+            403,
+        )
+
+    try:
+        with get_db_connection() as conn:
+            target_user = conn.execute(
+                "SELECT name, role FROM users WHERE name = ?", (target_name,)
+            ).fetchone()
+
+            if not target_user:
+                return jsonify({"error": "User not found."}), 404
+
+            if target_user["role"] == "admin":
+                return (
+                    jsonify({"error": "Cannot delete admin account."}),
+                    403,
+                )
+
+            cursor = conn.execute(
+                "DELETE FROM users WHERE name = ?",
+                (target_name,),
+            )
+            conn.commit()
+
+            if cursor.rowcount > 0:
+                return (
+                    jsonify({"message": "User successfully deleted."}),
+                    200,
+                )
+            else:
+                return (
+                    jsonify({"error": "User not found or could not be deleted."}),
+                    404,
+                )
+
+    except Exception:
+        return jsonify({"error": "Database error"}), 500
+
+
 # === Get All Users ===
 @app.route("/users", methods=["GET"])
 @token_required(role_minimum="admin")
