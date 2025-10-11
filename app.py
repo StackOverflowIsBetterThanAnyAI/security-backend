@@ -24,6 +24,8 @@ FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+?\.jpg$")
 PAGE_SIZE = 36
 MAX_PAGE = 56
 
+MAX_USERS = 8
+
 app = Flask(__name__)
 CORS(app)
 
@@ -137,6 +139,19 @@ def register():
             ),
             400,
         )
+
+    try:
+        with get_db_connection() as conn:
+            count_row = conn.execute("SELECT COUNT(id) AS count FROM users").fetchone()
+            user_count = count_row["count"]
+
+            if user_count >= MAX_USERS:
+                return (
+                    jsonify({"error": "Registration limit reached."}),
+                    400,
+                )
+    except sqlite3.OperationalError:
+        return jsonify({"error": "Database busy, please retry."}), 500
 
     role = "user"
     hashed_pw = generate_password_hash(password)
