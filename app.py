@@ -236,9 +236,11 @@ def get_image(current_user, filename):
 
 # === get all users (for testing only) ===
 @app.route("/users", methods=["GET"])
-def get_users():
+@token_required(role_minimum="admin")
+def get_users(current_user):
     with get_db_connection() as conn:
-        users = conn.execute("SELECT * FROM users").fetchall()
+        users = conn.execute("SELECT id, name, role FROM users").fetchall()
+
     return jsonify([dict(user) for user in users])
 
 
