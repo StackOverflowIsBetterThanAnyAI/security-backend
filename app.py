@@ -273,7 +273,7 @@ def update_user_role(current_user):
             if target_user["role"] == "admin":
                 return (
                     jsonify(
-                        {"error": f"Cannot modify the role of another admin account."}
+                        {"error": "Cannot modify the role of another admin account."}
                     ),
                     400,
                 )
