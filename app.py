@@ -261,46 +261,56 @@ def update_user_role(current_user):
     if not data:
         return jsonify({"error": "Invalid request format"}), 400
 
-    target_name = data.get("name")
+    target_id = data.get("id")
     new_role = data.get("role")
 
-    if not target_name or new_role not in ["user", "member"]:
+    if (
+        not isinstance(target_id, int)
+        or target_id <= 0
+        or new_role not in ["user", "member"]
+    ):
         return (
-            jsonify({"error": "Missing target name or invalid role."}),
+            jsonify({"error": "Missing target ID or invalid role."}),
             400,
         )
-
-    if target_name == current_user["name"]:
-        return jsonify({"error": "Cannot change your own role via API."}), 400
-
-    if target_name == ADMIN_USERNAME and new_role != "admin":
-        return jsonify({"error": "Cannot change the primary admin role."}), 400
 
     try:
         with get_db_connection() as conn:
             target_user = conn.execute(
-                "SELECT * FROM users WHERE name = ?", (target_name,)
+                "SELECT * FROM users WHERE id = ?", (target_id,)
             ).fetchone()
 
             if not target_user:
                 return jsonify({"error": "User not found."}), 404
 
+            if target_user["id"] == current_user["id"]:
+                return (
+                    jsonify({"error": "Cannot change your own role."}),
+                    400,
+                )
+
+            if target_user["name"] == ADMIN_USERNAME:
+                return (
+                    jsonify({"error": "Cannot change the role of admin accounts."}),
+                    400,
+                )
+
             if target_user["role"] == "admin":
                 return (
-                    jsonify(
-                        {"error": "Cannot modify the role of another admin account."}
-                    ),
+                    jsonify({"error": "Cannot change the role of admin accounts."}),
                     400,
                 )
 
             conn.execute(
-                "UPDATE users SET role = ?, token = NULL WHERE name = ?",
-                (new_role, target_name),
+                "UPDATE users SET role = ?, token = NULL WHERE id = ?",
+                (new_role, target_id),
             )
             conn.commit()
 
             return (
-                jsonify({"message": "Role of user was updated."}),
+                jsonify(
+                    {"message": "Role updated successfully. User session invalidated."}
+                ),
                 200,
             )
 
