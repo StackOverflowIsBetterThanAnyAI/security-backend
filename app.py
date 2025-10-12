@@ -317,35 +317,41 @@ def delete_user(current_user):
     if not data:
         return jsonify({"error": "Invalid request format"}), 400
 
-    target_name = data.get("name")
+    target_id = data.get("id")
 
-    if not target_name:
-        return jsonify({"error": "Missing target name."}), 400
-
-    if target_name == current_user["name"] or target_name == ADMIN_USERNAME:
-        return (
-            jsonify({"error": "Cannot delete account."}),
-            403,
-        )
+    if not isinstance(target_id, int) or target_id <= 0:
+        return jsonify({"error": "Missing or invalid target ID."}), 400
 
     try:
         with get_db_connection() as conn:
             target_user = conn.execute(
-                "SELECT name, role FROM users WHERE name = ?", (target_name,)
+                "SELECT id, name, role FROM users WHERE id = ?", (target_id,)
             ).fetchone()
 
             if not target_user:
                 return jsonify({"error": "User not found."}), 404
 
+            if target_user["id"] == current_user["id"]:
+                return (
+                    jsonify({"error": "Cannot delete your own account."}),
+                    400,
+                )
+
+            if target_user["name"] == ADMIN_USERNAME:
+                return (
+                    jsonify({"error": "Cannot delete the primary admin account."}),
+                    400,
+                )
+
             if target_user["role"] == "admin":
                 return (
                     jsonify({"error": "Cannot delete admin account."}),
-                    403,
+                    400,
                 )
 
             cursor = conn.execute(
-                "DELETE FROM users WHERE name = ?",
-                (target_name,),
+                "DELETE FROM users WHERE id = ?",
+                (target_id,),
             )
             conn.commit()
 
