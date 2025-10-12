@@ -286,19 +286,19 @@ def update_user_role(current_user):
             if target_user["id"] == current_user["id"]:
                 return (
                     jsonify({"error": "Cannot change your own role."}),
-                    400,
+                    403,
                 )
 
             if target_user["name"] == ADMIN_USERNAME:
                 return (
                     jsonify({"error": "Cannot change the role of admin accounts."}),
-                    400,
+                    403,
                 )
 
             if target_user["role"] == "admin":
                 return (
                     jsonify({"error": "Cannot change the role of admin accounts."}),
-                    400,
+                    403,
                 )
 
             conn.execute(
