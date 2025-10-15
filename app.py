@@ -251,11 +251,23 @@ def get_image(current_user, filename):
 
 @app.route("/live")
 def latest_image():
-    files = sorted(os.listdir(IMAGE_FOLDER_LOCATION_LIVE))
-    if not files:
-        return {"error": "No images"}, 404
-    latest = files[-1]
-    return send_from_directory(IMAGE_FOLDER_LOCATION_LIVE, latest, max_age=0)
+    try:
+        valid_files = sorted(
+            [
+                f
+                for f in os.listdir(IMAGE_FOLDER_LOCATION_LIVE)
+                if FILENAME_PATTERN.match(f)
+            ]
+        )
+
+        if not valid_files:
+            return jsonify({"error": "No valid images found"}), 404
+
+        latest = valid_files[-1]
+        return send_from_directory(IMAGE_FOLDER_LOCATION_LIVE, latest, max_age=0)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ============ ADMIN ROUTES ============
