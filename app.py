@@ -8,7 +8,7 @@ from functools import wraps
 import os
 import re
 
-from folder_data import IMAGE_FOLDER_LOCATION
+from folder_data import IMAGE_FOLDER_LOCATION, IMAGE_FOLDER_LOCATION_LIVE
 
 
 load_dotenv()
@@ -247,6 +247,15 @@ def get_image(current_user, filename):
         return jsonify({"error": "Resource not found or invalid format."}), 404
 
     return send_from_directory(IMAGE_FOLDER_LOCATION, filename)
+
+
+@app.route("/live")
+def latest_image():
+    files = sorted(os.listdir(IMAGE_FOLDER_LOCATION_LIVE))
+    if not files:
+        return {"error": "No images"}, 404
+    latest = files[-1]
+    return send_from_directory(IMAGE_FOLDER_LOCATION_LIVE, latest, max_age=0)
 
 
 # ============ ADMIN ROUTES ============
