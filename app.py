@@ -250,7 +250,8 @@ def get_image(current_user, filename):
 
 
 @app.route("/live")
-def latest_image():
+@token_required(role_minimum="member")
+def latest_image(current_user):
     try:
         valid_files = sorted(
             [
