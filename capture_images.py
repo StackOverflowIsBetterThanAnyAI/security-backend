@@ -7,7 +7,7 @@ from picamzero import Camera
 from datetime import datetime
 from time import sleep
 
-REGEX = re.compile(r"^security_image_\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}\.jpg$")
+REGEX = re.compile(r"^security_image_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.jpg$")
 
 
 def capture_images():
