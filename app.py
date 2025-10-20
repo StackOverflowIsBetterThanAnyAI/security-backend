@@ -271,6 +271,33 @@ def latest_image(current_user):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/live/meta")
+@token_required(role_minimum="member")
+def latest_image_meta(current_user):
+    try:
+        latest = get_latest_image_filename()
+
+        if not latest:
+            return jsonify({"error": "No valid images found"}), 404
+
+        if not FILENAME_PATTERN.match(latest):
+            return jsonify({"error": "Invalid filename format"}), 400
+
+        return jsonify({"filename": latest})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def get_latest_image_filename():
+    valid_files = sorted(
+        [f for f in os.listdir(IMAGE_FOLDER_LOCATION_LIVE) if FILENAME_PATTERN.match(f)]
+    )
+    if not valid_files:
+        return None
+    return valid_files[-1]
+
+
 # ============ ADMIN ROUTES ============
 
 
