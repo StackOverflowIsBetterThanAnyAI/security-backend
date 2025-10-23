@@ -26,7 +26,7 @@ def capture_images():
             if len(image_files) >= 2016:
                 os.remove(os.path.join(IMAGE_FOLDER_LOCATION, image_files[0]))
 
-            current_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             filename = f"{IMAGE_FOLDER_LOCATION}/security_image_{current_time}.jpg"
 
             cam.annotate(current_time)
