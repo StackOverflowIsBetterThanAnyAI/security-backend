@@ -1,5 +1,11 @@
 # Security Backend
 
+## Installation Guide
+
+1. `pip install flask flask-cors python-dotenv werkzeug`
+
+2. create a .env with admin credentials
+
 ## Usage Guide
 
 1. User Authentication: Registrationand login. All new users receive a default user role.
