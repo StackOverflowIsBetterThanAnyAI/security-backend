@@ -10,6 +10,8 @@ import re
 
 from folder_data import IMAGE_FOLDER_LOCATION, IMAGE_FOLDER_LOCATION_LIVE
 
+os.makedirs(IMAGE_FOLDER_LOCATION, exist_ok=True)
+os.makedirs(IMAGE_FOLDER_LOCATION_LIVE, exist_ok=True)
 
 load_dotenv()
 
