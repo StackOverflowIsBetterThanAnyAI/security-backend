@@ -300,6 +300,23 @@ def get_latest_image_filename():
     return valid_files[-1]
 
 
+# === Get User Role ===
+@app.route("/user/role", methods=["GET"])
+@token_required(role_minimum="user")
+def get_current_user_role(current_user):
+    if not current_user:
+        return jsonify({"error": "Invalid request format"}), 400
+
+    return (
+        jsonify(
+            {
+                "role": current_user["role"],
+            }
+        ),
+        200,
+    )
+
+
 # ============ ADMIN ROUTES ============
 
 
@@ -328,7 +345,7 @@ def update_user_role(current_user):
     try:
         with get_db_connection() as conn:
             target_user = conn.execute(
-                "SELECT * FROM users WHERE id = ?", (target_id,)
+                "SELECT id, name, role, token FROM users WHERE id = ?", (target_id,)
             ).fetchone()
 
             if not target_user:
@@ -352,9 +369,15 @@ def update_user_role(current_user):
                     403,
                 )
 
+            old_role = target_user["role"]
+            token_for_user = target_user["token"]
+
+            if old_role == "member" and new_role == "user":
+                token_for_user = None
+
             conn.execute(
-                "UPDATE users SET role = ?, token = NULL WHERE id = ?",
-                (new_role, target_id),
+                "UPDATE users SET role = ?, token = ? WHERE id = ?",
+                (new_role, token_for_user, target_id),
             )
             conn.commit()
 
