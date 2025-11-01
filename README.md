@@ -2,7 +2,7 @@
 
 ## Installation Guide
 
-1. `pip install flask flask-cors python-dotenv werkzeug`
+1. `pip install flask flask-cors python-dotenv waitress werkzeug`
 
 2. create a .env with admin credentials
 

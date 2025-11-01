@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from waitress import serve
 import sqlite3
 import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -60,8 +61,6 @@ def init_db():
     ).fetchone()
 
     if not admin:
-        from werkzeug.security import generate_password_hash
-
         hashed_pw = generate_password_hash(ADMIN_PASSWORD)
         token = secrets.token_hex(16)
         conn.execute(
@@ -471,4 +470,4 @@ def get_users(current_user):
 # ============ START ============
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    serve(app, host='0.0.0.0', port=5000, threads=4)
