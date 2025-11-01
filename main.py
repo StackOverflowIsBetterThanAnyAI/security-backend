@@ -2,7 +2,7 @@ import subprocess
 import time
 
 def run_script(script_name):
-    process = subprocess.Popen(['python', script_name])
+    process = subprocess.Popen(['/home/admin/security/venv/bin/python', script_name])
     return process
 
 def main():
