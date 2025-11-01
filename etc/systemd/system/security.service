@@ -1,0 +1,25 @@
+# sudo nano /etc/systemd/system/security.service
+
+# sudo systemctl daemon-reload
+
+# sudo systemctl enable security.service
+
+# sudo systemctl status security.service
+
+# sudo journalctl -u security.service -f
+
+[Unit]
+Description=Security System Startup Script
+After=network.target
+
+[Service]
+User=admin
+WorkingDirectory=/home/admin/security/
+
+ExecStart=/home/admin/security/venv/bin/python /home/admin/security/main.py
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
