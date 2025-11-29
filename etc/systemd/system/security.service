@@ -1,12 +1,19 @@
-# sudo nano /etc/systemd/system/security.service
+# create the security service file, enable venv
+$ sudo nano /etc/systemd/system/security.service
 
-# sudo systemctl daemon-reload
+# reload daemon after configuration files have been changed
+$ sudo systemctl daemon-reload
 
-# sudo systemctl enable security.service
+# automatically start service on boot
+$ sudo systemctl enable security.service
 
-# sudo systemctl status security.service
+# show service status
+$ sudo systemctl status security.service
 
-# sudo journalctl -u security.service -f
+# show real time logs
+$ sudo journalctl -u security.service -f
+
+# /etc/systemd/system/security.service file content
 
 [Unit]
 Description=Security System Startup Script
