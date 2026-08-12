@@ -1,5 +1,11 @@
 # Security Backend
 
+ssh connection:
+
+```
+ssh admin@raspberrypi
+```
+
 ## Installation Guide
 
 1. `pip install flask flask-cors python-dotenv waitress werkzeug`
