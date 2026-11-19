@@ -270,7 +270,9 @@ def latest_image(current_user):
             return jsonify({"error": "No valid images found"}), 404
 
         latest = valid_files[-1]
-        return send_from_directory(IMAGE_FOLDER_LOCATION_LIVE, latest, max_age=0)
+        response = send_from_directory(IMAGE_FOLDER_LOCATION_LIVE, latest, max_age=0)
+        response.headers["X-Image-Name"] = latest
+        return response
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
