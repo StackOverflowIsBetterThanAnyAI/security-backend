@@ -30,6 +30,7 @@ USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9]{5,20}$")
 PASSWORD_PATTERN = re.compile(r"^[^\s]{8,25}$")
 
 FILENAME_PATTERN = IMAGE_FILENAME_PATTERN
+DAY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 PAGE_SIZE = 36
 MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
@@ -250,11 +251,15 @@ def list_images(current_user):
             400,
         )
 
+    day = request.args.get("day")
+    if day is not None and not DAY_PATTERN.match(day):
+        return jsonify({"error": "Day must have the format YYYY-MM-DD."}), 400
+
     page_size = PAGE_SIZE
 
-    all_files = os.listdir(IMAGE_FOLDER_LOCATION)
-    valid_files = [f for f in all_files if FILENAME_PATTERN.match(f)]
-    files = sorted(valid_files)
+    files = list_archive_files()
+    if day is not None:
+        files = [f for f in files if image_day(f) == day]
     start = (page - 1) * page_size
     end = start + page_size
     paginated = files[start:end]
@@ -268,6 +273,29 @@ def list_images(current_user):
             "total_images": len(files),
         }
     )
+
+
+@app.route("/days", methods=["GET"])
+@token_required(role_minimum="member")
+def list_days(current_user):
+    days = {}
+    for f in list_archive_files():
+        day = image_day(f)
+        entry = days.setdefault(day, {"date": day, "count": 0})
+        entry["count"] += 1
+        entry["thumbnail"] = f"/image/{f}"
+
+    return jsonify({"days": sorted(days.values(), key=lambda d: d["date"], reverse=True)})
+
+
+def list_archive_files():
+    return sorted(
+        f for f in os.listdir(IMAGE_FOLDER_LOCATION) if FILENAME_PATTERN.match(f)
+    )
+
+
+def image_day(filename):
+    return filename[len("security_image_") : len("security_image_YYYY-MM-DD")]
 
 
 @app.route("/image/<filename>")
