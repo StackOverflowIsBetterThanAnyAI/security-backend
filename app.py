@@ -31,6 +31,7 @@ PASSWORD_PATTERN = re.compile(r"^[^\s]{8,25}$")
 
 FILENAME_PATTERN = IMAGE_FILENAME_PATTERN
 DAY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+THUMBNAIL_TARGET_SECONDS = 12 * 60 * 60
 
 PAGE_SIZE = 36
 MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
@@ -281,11 +282,18 @@ def list_days(current_user):
     days = {}
     for f in list_archive_files():
         day = image_day(f)
-        entry = days.setdefault(day, {"date": day, "count": 0})
+        distance = abs(image_seconds_of_day(f) - THUMBNAIL_TARGET_SECONDS)
+        entry = days.setdefault(day, {"date": day, "count": 0, "distance": None})
         entry["count"] += 1
-        entry["thumbnail"] = f"/image/{f}"
+        if entry["distance"] is None or distance < entry["distance"]:
+            entry["distance"] = distance
+            entry["thumbnail"] = f"/image/{f}"
 
-    return jsonify({"days": sorted(days.values(), key=lambda d: d["date"], reverse=True)})
+    result = [
+        {"date": d["date"], "count": d["count"], "thumbnail": d["thumbnail"]}
+        for d in sorted(days.values(), key=lambda d: d["date"], reverse=True)
+    ]
+    return jsonify({"days": result})
 
 
 def list_archive_files():
@@ -296,6 +304,12 @@ def list_archive_files():
 
 def image_day(filename):
     return filename[len("security_image_") : len("security_image_YYYY-MM-DD")]
+
+
+def image_seconds_of_day(filename):
+    time_part = filename[len("security_image_YYYY-MM-DD_") : -len(".jpg")]
+    hours, minutes, seconds = (int(v) for v in time_part.split("-"))
+    return hours * 3600 + minutes * 60 + seconds
 
 
 @app.route("/image/<filename>")
