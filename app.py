@@ -6,10 +6,16 @@ import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from functools import wraps
+import math
 import os
 import re
 
-from folder_data import IMAGE_FOLDER_LOCATION, IMAGE_FOLDER_LOCATION_LIVE
+from folder_data import (
+    IMAGE_FILENAME_PATTERN,
+    IMAGE_FOLDER_LOCATION,
+    IMAGE_FOLDER_LOCATION_LIVE,
+    MAX_ARCHIVE_IMAGES,
+)
 
 os.makedirs(IMAGE_FOLDER_LOCATION, exist_ok=True)
 os.makedirs(IMAGE_FOLDER_LOCATION_LIVE, exist_ok=True)
@@ -22,10 +28,10 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9]{5,20}$")
 PASSWORD_PATTERN = re.compile(r"^[^\s]{8,25}$")
 
-FILENAME_PATTERN = re.compile(r"^[a-zA-Z0-9_.\-]+?\.jpg$")
+FILENAME_PATTERN = IMAGE_FILENAME_PATTERN
 
 PAGE_SIZE = 36
-MAX_PAGE = 56
+MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
 
 MAX_USERS = 8
 
@@ -42,8 +48,7 @@ def get_db_connection():
 def init_db():
     with sqlite3.connect("database.db", timeout=10, check_same_thread=False) as conn:
         conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute(
-            """
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
@@ -51,8 +56,7 @@ def init_db():
                 token TEXT,
                 role TEXT DEFAULT 'user'
             )
-        """
-        )
+        """)
         conn.commit()
 
     # === Admin ===
@@ -470,4 +474,4 @@ def get_users(current_user):
 # ============ START ============
 
 if __name__ == "__main__":
-    serve(app, host='0.0.0.0', port=5000, threads=4)
+    serve(app, host="0.0.0.0", port=5000, threads=4)
