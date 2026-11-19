@@ -9,6 +9,7 @@ from functools import wraps
 import math
 import os
 import re
+import time
 
 from folder_data import (
     IMAGE_FILENAME_PATTERN,
@@ -35,6 +36,8 @@ MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
 
 MAX_USERS = 8
 
+TOKEN_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
+
 app = Flask(__name__)
 CORS(app)
 
@@ -54,9 +57,19 @@ def init_db():
                 name TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
                 token TEXT,
-                role TEXT DEFAULT 'user'
+                role TEXT DEFAULT 'user',
+                token_created_at INTEGER
             )
         """)
+
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(users)")]
+        if "token_created_at" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN token_created_at INTEGER")
+        conn.execute(
+            "UPDATE users SET token_created_at = ? "
+            "WHERE token IS NOT NULL AND token_created_at IS NULL",
+            (int(time.time()),),
+        )
         conn.commit()
 
     # === Admin ===
@@ -68,8 +81,9 @@ def init_db():
         hashed_pw = generate_password_hash(ADMIN_PASSWORD)
         token = secrets.token_hex(16)
         conn.execute(
-            "INSERT INTO users (name, password, role, token) VALUES (?, ?, ?, ?)",
-            (ADMIN_USERNAME, hashed_pw, "admin", token),
+            "INSERT INTO users (name, password, role, token, token_created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (ADMIN_USERNAME, hashed_pw, "admin", token, int(time.time())),
         )
         conn.commit()
 
@@ -82,11 +96,8 @@ def token_required(role_minimum="member"):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            token = request.headers.get("Authorization")
-            if token and token.startswith("Bearer "):
-                token = token.replace("Bearer ", "")
-            else:
-                token = request.args.get("token")
+            header = request.headers.get("Authorization", "")
+            token = header[len("Bearer ") :] if header.startswith("Bearer ") else None
 
             if not token:
                 return jsonify({"error": "Token required"}), 401
@@ -96,8 +107,18 @@ def token_required(role_minimum="member"):
                     "SELECT * FROM users WHERE token = ?", (token,)
                 ).fetchone()
 
-            if not user:
-                return jsonify({"error": "Invalid token"}), 403
+                if not user:
+                    return jsonify({"error": "Invalid token"}), 403
+
+                token_created_at = user["token_created_at"] or 0
+                if time.time() - token_created_at > TOKEN_MAX_AGE_SECONDS:
+                    conn.execute(
+                        "UPDATE users SET token = NULL, token_created_at = NULL "
+                        "WHERE id = ?",
+                        (user["id"],),
+                    )
+                    conn.commit()
+                    return jsonify({"error": "Token expired"}), 403
 
             role_hierarchy = {"user": 0, "member": 1, "admin": 2}
             if role_hierarchy[user["role"]] < role_hierarchy[role_minimum]:
@@ -165,8 +186,9 @@ def register():
     try:
         with get_db_connection() as conn:
             conn.execute(
-                "INSERT INTO users (name, password, token, role) VALUES (?, ?, ?, ?)",
-                (name, hashed_pw, token, role),
+                "INSERT INTO users (name, password, token, role, token_created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (name, hashed_pw, token, role, int(time.time())),
             )
             conn.commit()
         return jsonify({"role": role, "token": token}), 201
@@ -199,7 +221,10 @@ def login():
         user = conn.execute("SELECT * FROM users WHERE name = ?", (name,)).fetchone()
         if user and check_password_hash(user["password"], password):
             token = secrets.token_hex(16)
-            conn.execute("UPDATE users SET token = ? WHERE id = ?", (token, user["id"]))
+            conn.execute(
+                "UPDATE users SET token = ?, token_created_at = ? WHERE id = ?",
+                (token, int(time.time()), user["id"]),
+            )
             conn.commit()
             return jsonify({"role": user["role"], "token": token}), 200
         else:
