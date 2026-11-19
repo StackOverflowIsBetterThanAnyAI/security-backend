@@ -1,3 +1,9 @@
 .env
 database.db*
 /__pycache__
+
+# local runtime data on the Pi, never commit
+/venv
+/security_images
+/security_image_live
+/certificate
