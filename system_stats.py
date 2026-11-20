@@ -8,6 +8,7 @@ from folder_data import (
     IMAGE_FILENAME_PATTERN,
     IMAGE_FOLDER_LOCATION,
     IMAGE_FOLDER_LOCATION_LIVE,
+    MAX_ARCHIVE_IMAGES,
 )
 
 THROTTLE_FLAGS = {
@@ -108,6 +109,6 @@ def collect():
         "memory": memory(),
         "throttling": throttling(),
         "uptime_seconds": uptime_seconds(),
-        "archive": images(IMAGE_FOLDER_LOCATION),
+        "archive": {**images(IMAGE_FOLDER_LOCATION), "max": MAX_ARCHIVE_IMAGES},
         "live": images(IMAGE_FOLDER_LOCATION_LIVE),
     }
