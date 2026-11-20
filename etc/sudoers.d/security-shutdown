@@ -1,0 +1,2 @@
+# allows the security service to power off the Pi via POST /admin/shutdown
+admin ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff

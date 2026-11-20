@@ -50,6 +50,14 @@ Requires Raspberry Pi OS with `git`, `python3` and `rpicam-apps` (for `rpicam-jp
     sudo journalctl -u security.service -f
     ```
 
+5. Allow the service to power off the Pi from the admin tab, see [etc/sudoers.d/security-shutdown](etc/sudoers.d/security-shutdown). Adjust the user if it is not `admin`.
+
+    ```
+    sudo install -m 0440 etc/sudoers.d/security-shutdown /etc/sudoers.d/security-shutdown
+    # check the syntax, a broken sudoers file locks out sudo
+    sudo visudo -c
+    ```
+
 `database.db` and the image folders `security_images/` and `security_image_live/` are created automatically on first start. They, `.env`, `venv/` and `certificate/` are git-ignored and stay local on the Pi, so back them up separately.
 
 ## Update Guide
