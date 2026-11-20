@@ -11,6 +11,7 @@ import os
 import re
 import time
 
+import system_stats
 from folder_data import (
     IMAGE_FILENAME_PATTERN,
     IMAGE_FOLDER_LOCATION,
@@ -524,6 +525,13 @@ def delete_user(current_user):
 
     except Exception:
         return jsonify({"error": "Database error"}), 500
+
+
+# === System Stats ===
+@app.route("/admin/stats", methods=["GET"])
+@token_required(role_minimum="admin")
+def get_system_stats(current_user):
+    return jsonify(system_stats.collect())
 
 
 # === Get All Users ===
