@@ -9,6 +9,7 @@ from functools import wraps
 import math
 import os
 import re
+import subprocess
 import time
 
 import system_stats
@@ -38,6 +39,8 @@ PAGE_SIZE = 36
 MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
 
 MAX_USERS = 8
+
+POWEROFF_COMMAND = ["/usr/bin/systemctl", "poweroff"]
 
 TOKEN_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
 
@@ -532,6 +535,29 @@ def delete_user(current_user):
 @token_required(role_minimum="admin")
 def get_system_stats(current_user):
     return jsonify(system_stats.collect())
+
+
+# === Shutdown ===
+@app.route("/admin/shutdown", methods=["POST"])
+@token_required(role_minimum="admin")
+def shutdown_system(current_user):
+    try:
+        allowed = subprocess.run(
+            ["sudo", "-n", "-l", *POWEROFF_COMMAND],
+            capture_output=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return jsonify({"error": "Shutdown not available"}), 500
+    if allowed.returncode != 0:
+        return jsonify({"error": "Shutdown not permitted"}), 500
+
+    # delay the poweroff so the response reaches the app first
+    subprocess.Popen(
+        ["sh", "-c", f"sleep 2 && sudo -n {' '.join(POWEROFF_COMMAND)}"],
+        start_new_session=True,
+    )
+    return jsonify({"message": "Shutting down"}), 202
 
 
 # === Get All Users ===
