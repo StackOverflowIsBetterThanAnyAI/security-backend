@@ -6,6 +6,8 @@ ssh connection:
 
 ```
 ssh admin@raspberrypi
+# or via Tailscale from any device in the tailnet
+ssh admin@security-pi
 ```
 
 ## Installation Guide
@@ -56,6 +58,28 @@ Requires Raspberry Pi OS with `git`, `python3` and `rpicam-apps` (for `rpicam-jp
     sudo install -m 0440 etc/sudoers.d/security-shutdown /etc/sudoers.d/security-shutdown
     # check the syntax, a broken sudoers file locks out sudo
     sudo visudo -c
+    ```
+
+6. Install [Tailscale](https://tailscale.com) so the app reaches the Pi at home and on the go without opening any port on the router:
+
+    ```
+    curl -fsSL https://tailscale.com/install.sh | sh
+    # opens a login link, only needed once, the login is stored and tailscaled starts on boot
+    sudo tailscale up --hostname=security-pi
+    # the Tailscale address to put into the app's .env
+    tailscale ip -4
+    ```
+
+    Then disable the key expiry for `security-pi` in the Tailscale admin console (Machines), otherwise the Pi drops out of the tailnet after 180 days. The backend listens on all interfaces, so it is reachable via Tailscale without further configuration.
+
+7. Optional: keep the system log across reboots to be able to debug hangs, limited to 50 MB:
+
+    ```
+    sudo mkdir -p /var/log/journal
+    echo "SystemMaxUse=50M" | sudo tee -a /etc/systemd/journald.conf
+    sudo systemctl restart systemd-journald
+    # log of the previous boot
+    sudo journalctl -b -1
     ```
 
 `database.db` and the image folders `security_images/` and `security_image_live/` are created automatically on first start. They, `.env`, `venv/` and `certificate/` are git-ignored and stay local on the Pi, so back them up separately.
