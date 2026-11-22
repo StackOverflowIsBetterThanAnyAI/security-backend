@@ -19,6 +19,8 @@ RPICAM_CMD = [
     "--height",
     "480",
     "--nopreview",
+    "--thumb",
+    "320:180:70",
 ]
 
 

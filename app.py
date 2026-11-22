@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, Response, request, jsonify, send_from_directory
 from flask_cors import CORS
 from waitress import serve
 import sqlite3
@@ -13,6 +13,7 @@ import subprocess
 import time
 
 import system_stats
+from thumbnails import read_thumbnail
 from folder_data import (
     IMAGE_FILENAME_PATTERN,
     IMAGE_FOLDER_LOCATION,
@@ -323,6 +324,22 @@ def get_image(current_user, filename):
         return jsonify({"error": "Resource not found or invalid format."}), 404
 
     return send_from_directory(IMAGE_FOLDER_LOCATION, filename)
+
+
+@app.route("/thumbnail/<filename>")
+@token_required(role_minimum="member")
+def get_thumbnail(current_user, filename):
+    if not FILENAME_PATTERN.match(filename):
+        return jsonify({"error": "Resource not found or invalid format."}), 404
+
+    path = os.path.join(IMAGE_FOLDER_LOCATION, filename)
+    if not os.path.isfile(path):
+        return jsonify({"error": "Resource not found or invalid format."}), 404
+
+    thumbnail = read_thumbnail(path)
+    if thumbnail is None:
+        return jsonify({"error": "Resource not found or invalid format."}), 404
+    return Response(thumbnail, mimetype="image/jpeg")
 
 
 @app.route("/live")
