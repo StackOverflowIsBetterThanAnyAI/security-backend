@@ -43,8 +43,6 @@ MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
 
 MAX_USERS = 8
 
-# after this many failed logins from one address within the window,
-# further logins from it are refused for the lock time
 LOGIN_MAX_FAILURES = 5
 LOGIN_LOCK_SECONDS = 5 * 60
 LOGIN_FAILURE_WINDOW_SECONDS = 15 * 60
