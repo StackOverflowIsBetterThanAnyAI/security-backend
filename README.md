@@ -116,7 +116,7 @@ sudo systemctl restart security.service
 
 4. Raspberry Pi Integration: Captures a live image every 10 seconds and an archive image every 5 minutes, keeping one week (2016 images) of archive images. If the camera does not respond five times in a row, the service restarts itself.
 
-5. Login Protection: After five failed logins from the same address within 15 minutes, further logins from it are blocked for five minutes (HTTP 429 with a `Retry-After` header).
+5. Login Protection: After five failed logins from the same address within 15 minutes, further logins from it are blocked for five minutes (HTTP 429 with a `Retry-After` header). Login tokens are stored as SHA-256 hashes only, so a copy of the database contains no usable tokens.
 
 ## Frontend Repository
 
