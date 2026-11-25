@@ -1,5 +1,4 @@
 from flask import Flask, Response, request, jsonify, send_from_directory
-from flask_cors import CORS
 from waitress import serve
 import sqlite3
 import secrets
@@ -53,7 +52,6 @@ POWEROFF_COMMAND = ["/usr/bin/systemctl", "poweroff"]
 TOKEN_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
 
 app = Flask(__name__)
-CORS(app)
 
 
 def hash_token(token):
@@ -457,8 +455,10 @@ def latest_image(current_user):
         response.headers["X-Image-Name"] = latest
         return response
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        # details only go to the journal, not to the client
+        app.logger.exception("Serving the live image failed")
+        return jsonify({"error": "Live image could not be loaded."}), 500
 
 
 @app.route("/live/meta")
@@ -475,8 +475,9 @@ def latest_image_meta(current_user):
 
         return jsonify({"filename": latest})
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        app.logger.exception("Reading the live image name failed")
+        return jsonify({"error": "Live image could not be loaded."}), 500
 
 
 def get_latest_image_filename():
