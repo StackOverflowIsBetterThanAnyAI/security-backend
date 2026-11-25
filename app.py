@@ -6,6 +6,7 @@ import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from functools import wraps
+import hashlib
 import math
 import os
 import re
@@ -55,6 +56,10 @@ app = Flask(__name__)
 CORS(app)
 
 
+def hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 def get_db_connection():
     conn = sqlite3.connect("database.db", timeout=10, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -83,6 +88,14 @@ def init_db():
             "WHERE token IS NOT NULL AND token_created_at IS NULL",
             (int(time.time()),),
         )
+        for row in conn.execute(
+            "SELECT id, token FROM users "
+            "WHERE token IS NOT NULL AND length(token) != 64"
+        ).fetchall():
+            conn.execute(
+                "UPDATE users SET token = ? WHERE id = ?",
+                (hash_token(row[1]), row[0]),
+            )
         conn.commit()
 
     # === Admin ===
@@ -96,7 +109,7 @@ def init_db():
         conn.execute(
             "INSERT INTO users (name, password, role, token, token_created_at) "
             "VALUES (?, ?, ?, ?, ?)",
-            (ADMIN_USERNAME, hashed_pw, "admin", token, int(time.time())),
+            (ADMIN_USERNAME, hashed_pw, "admin", hash_token(token), int(time.time())),
         )
         conn.commit()
 
@@ -117,7 +130,7 @@ def token_required(role_minimum="member"):
 
             with get_db_connection() as conn:
                 user = conn.execute(
-                    "SELECT * FROM users WHERE token = ?", (token,)
+                    "SELECT * FROM users WHERE token = ?", (hash_token(token),)
                 ).fetchone()
 
                 if not user:
@@ -201,7 +214,7 @@ def register():
             conn.execute(
                 "INSERT INTO users (name, password, token, role, token_created_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (name, hashed_pw, token, role, int(time.time())),
+                (name, hashed_pw, hash_token(token), role, int(time.time())),
             )
             conn.commit()
         return jsonify({"role": role, "token": token}), 201
@@ -302,7 +315,7 @@ def login():
             token = secrets.token_hex(16)
             conn.execute(
                 "UPDATE users SET token = ?, token_created_at = ? WHERE id = ?",
-                (token, int(time.time()), user["id"]),
+                (hash_token(token), int(time.time()), user["id"]),
             )
             conn.commit()
             reset_login_failures(address)
