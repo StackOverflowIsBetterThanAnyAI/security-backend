@@ -12,6 +12,7 @@ import re
 import subprocess
 import threading
 import time
+import zipfile
 
 import system_stats
 from thumbnails import read_thumbnail
@@ -433,6 +434,63 @@ def get_thumbnail(current_user, filename):
     if thumbnail is None:
         return jsonify({"error": "Resource not found or invalid format."}), 404
     return cache_permanently(Response(thumbnail, mimetype="image/jpeg"))
+
+
+class ZipStream:
+    """Write-only buffer, lets zipfile stream the archive chunk by chunk."""
+
+    def __init__(self):
+        self.chunks = []
+        self.size = 0
+
+    def write(self, data):
+        self.chunks.append(bytes(data))
+        self.size += len(data)
+        return len(data)
+
+    def tell(self):
+        return self.size
+
+    def flush(self):
+        pass
+
+    def take(self):
+        data = b"".join(self.chunks)
+        self.chunks = []
+        return data
+
+
+@app.route("/days/<day>/zip")
+@token_required(role_minimum="member")
+def download_day(current_user, day):
+    if not DAY_PATTERN.match(day):
+        return jsonify({"error": "Day must have the format YYYY-MM-DD."}), 400
+
+    files = [f for f in list_archive_files() if image_day(f) == day]
+    if not files:
+        return jsonify({"error": "No recordings for this day."}), 404
+
+    def generate():
+        stream = ZipStream()
+        with zipfile.ZipFile(stream, "w", zipfile.ZIP_STORED) as archive:
+            for filename in files:
+                try:
+                    archive.write(
+                        os.path.join(IMAGE_FOLDER_LOCATION, filename), filename
+                    )
+                except OSError:
+                    # removed by the archive rotation in the meantime
+                    continue
+                yield stream.take()
+        yield stream.take()
+
+    return Response(
+        generate(),
+        mimetype="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="security_images_{day}.zip"'
+        },
+    )
 
 
 @app.route("/live")
