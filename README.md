@@ -82,12 +82,13 @@ Requires Raspberry Pi OS with `git`, `python3` and `rpicam-apps` (for `rpicam-jp
     systemctl show -p RuntimeWatchdogUSec
     ```
 
-8. Optional: keep the system log across reboots to be able to debug hangs, limited to 50 MB:
+8. Optional: keep the system log across reboots to be able to debug hangs, limited to 50 MB, see [etc/systemd/journald.conf.d/50-persistent.conf](etc/systemd/journald.conf.d/50-persistent.conf). Raspberry Pi OS keeps it in RAM only by default:
 
     ```
-    sudo mkdir -p /var/log/journal
-    echo "SystemMaxUse=50M" | sudo tee -a /etc/systemd/journald.conf
+    sudo mkdir -p /etc/systemd/journald.conf.d
+    sudo cp etc/systemd/journald.conf.d/50-persistent.conf /etc/systemd/journald.conf.d/50-persistent.conf
     sudo systemctl restart systemd-journald
+    sudo journalctl --flush
     # log of the previous boot
     sudo journalctl -b -1
     ```
