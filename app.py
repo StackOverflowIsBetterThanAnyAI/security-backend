@@ -39,6 +39,8 @@ FILENAME_PATTERN = IMAGE_FILENAME_PATTERN
 DAY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 THUMBNAIL_TARGET_SECONDS = 12 * 60 * 60
 IMAGE_CACHE_SECONDS = 365 * 24 * 60 * 60
+# the app compares this name to tell the Pi apart from other devices
+HEALTH_SERVICE_NAME = "security-backend"
 
 PAGE_SIZE = 36
 MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
@@ -158,6 +160,14 @@ def token_required(role_minimum="member"):
 
 
 # ============ ROUTES ============
+
+
+# === Health ===
+# the app probes this route without login to find out whether
+# the Pi is reachable in the home network
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"service": HEALTH_SERVICE_NAME})
 
 
 # === Register ===
