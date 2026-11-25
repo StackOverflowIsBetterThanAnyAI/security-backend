@@ -35,6 +35,7 @@ PASSWORD_PATTERN = re.compile(r"^[^\s]{8,25}$")
 FILENAME_PATTERN = IMAGE_FILENAME_PATTERN
 DAY_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 THUMBNAIL_TARGET_SECONDS = 12 * 60 * 60
+IMAGE_CACHE_SECONDS = 365 * 24 * 60 * 60
 
 PAGE_SIZE = 36
 MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
@@ -317,13 +318,22 @@ def image_seconds_of_day(filename):
     return hours * 3600 + minutes * 60 + seconds
 
 
+def cache_permanently(response):
+    response.cache_control.no_cache = None
+    response.cache_control.max_age = IMAGE_CACHE_SECONDS
+    response.cache_control.public = False
+    response.cache_control.private = True
+    response.cache_control.immutable = True
+    return response
+
+
 @app.route("/image/<filename>")
 @token_required(role_minimum="member")
 def get_image(current_user, filename):
     if not FILENAME_PATTERN.match(filename):
         return jsonify({"error": "Resource not found or invalid format."}), 404
 
-    return send_from_directory(IMAGE_FOLDER_LOCATION, filename)
+    return cache_permanently(send_from_directory(IMAGE_FOLDER_LOCATION, filename))
 
 
 @app.route("/thumbnail/<filename>")
@@ -339,7 +349,7 @@ def get_thumbnail(current_user, filename):
     thumbnail = read_thumbnail(path)
     if thumbnail is None:
         return jsonify({"error": "Resource not found or invalid format."}), 404
-    return Response(thumbnail, mimetype="image/jpeg")
+    return cache_permanently(Response(thumbnail, mimetype="image/jpeg"))
 
 
 @app.route("/live")
