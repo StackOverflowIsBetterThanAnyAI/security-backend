@@ -10,6 +10,7 @@ import math
 import os
 import re
 import subprocess
+import threading
 import time
 
 import system_stats
@@ -41,6 +42,10 @@ PAGE_SIZE = 36
 MAX_PAGE = math.ceil(MAX_ARCHIVE_IMAGES / PAGE_SIZE)
 
 MAX_USERS = 8
+
+LOGIN_MAX_FAILURES = 5
+LOGIN_LOCK_SECONDS = 5 * 60
+LOGIN_FAILURE_WINDOW_SECONDS = 15 * 60
 
 POWEROFF_COMMAND = ["/usr/bin/systemctl", "poweroff"]
 
@@ -209,8 +214,74 @@ def register():
 
 
 # === Login ===
+login_failures = {}
+login_failures_lock = threading.Lock()
+
+
+def login_locked_seconds(address):
+    with login_failures_lock:
+        entry = login_failures.get(address)
+        if not entry:
+            return 0
+        return max(0, math.ceil(entry["locked_until"] - time.time()))
+
+
+def register_login_failure(address):
+    now = time.time()
+    with login_failures_lock:
+        # forget addresses whose window and lock are over, keeps the dict small
+        for key in [
+            key
+            for key, entry in login_failures.items()
+            if now - entry["first"] > LOGIN_FAILURE_WINDOW_SECONDS
+            and now >= entry["locked_until"]
+        ]:
+            del login_failures[key]
+
+        entry = login_failures.get(address)
+        if not entry or now - entry["first"] > LOGIN_FAILURE_WINDOW_SECONDS:
+            entry = {"count": 0, "first": now, "locked_until": 0}
+            login_failures[address] = entry
+        entry["count"] += 1
+        if entry["count"] >= LOGIN_MAX_FAILURES:
+            entry["count"] = 0
+            entry["first"] = now
+            entry["locked_until"] = now + LOGIN_LOCK_SECONDS
+
+
+def reset_login_failures(address):
+    with login_failures_lock:
+        login_failures.pop(address, None)
+
+
+def too_many_attempts(seconds):
+    minutes = math.ceil(seconds / 60)
+    plural = "" if minutes == 1 else "s"
+    response = jsonify(
+        {
+            "error": "Too many failed login attempts. "
+            f"Try again in {minutes} minute{plural}."
+        }
+    )
+    response.headers["Retry-After"] = str(seconds)
+    return response, 429
+
+
+def invalid_credentials(address):
+    register_login_failure(address)
+    locked = login_locked_seconds(address)
+    if locked:
+        return too_many_attempts(locked)
+    return jsonify({"error": "Invalid credentials"}), 401
+
+
 @app.route("/login", methods=["POST"])
 def login():
+    address = request.remote_addr or "unknown"
+    locked = login_locked_seconds(address)
+    if locked:
+        return too_many_attempts(locked)
+
     data = request.json
 
     if not data:
@@ -220,10 +291,10 @@ def login():
     password = data.get("password")
 
     if not name or not password:
-        return jsonify({"error": "Invalid credentials"}), 401
+        return invalid_credentials(address)
 
     if not USERNAME_PATTERN.match(name) or not PASSWORD_PATTERN.match(password):
-        return jsonify({"error": "Invalid credentials"}), 401
+        return invalid_credentials(address)
 
     with get_db_connection() as conn:
         user = conn.execute("SELECT * FROM users WHERE name = ?", (name,)).fetchone()
@@ -234,9 +305,10 @@ def login():
                 (token, int(time.time()), user["id"]),
             )
             conn.commit()
+            reset_login_failures(address)
             return jsonify({"role": user["role"], "token": token}), 200
-        else:
-            return jsonify({"error": "Invalid credentials"}), 401
+
+    return invalid_credentials(address)
 
 
 # === Images ===
