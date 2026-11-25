@@ -38,7 +38,7 @@ Requires Raspberry Pi OS with `git`, `python3` and `rpicam-apps` (for `rpicam-jp
     ADMIN_PASSWORD=...
     ```
 
-4. Install and start the systemd service, see [etc/systemd/system/security.service](etc/systemd/system/security.service). Adjust `User` and the paths if the user is not `admin`.
+4. Install and start the systemd service, see [etc/systemd/system/security.service](etc/systemd/system/security.service). Adjust `User` and the paths if the user is not `admin`. The service keeps the live image, which is rewritten every few seconds, in the RAM folder `/run/security` to spare the SD card.
 
     ```
     sudo cp etc/systemd/system/security.service /etc/systemd/system/security.service
@@ -82,7 +82,7 @@ Requires Raspberry Pi OS with `git`, `python3` and `rpicam-apps` (for `rpicam-jp
     sudo journalctl -b -1
     ```
 
-`database.db` and the image folders `security_images/` and `security_image_live/` are created automatically on first start. They, `.env`, `venv/` and `certificate/` are git-ignored and stay local on the Pi, so back them up separately.
+`database.db` and the image folder `security_images/` are created automatically on first start. They, `.env`, `venv/` and `certificate/` are git-ignored and stay local on the Pi, so back them up separately.
 
 ## Update Guide
 
@@ -90,6 +90,8 @@ Requires Raspberry Pi OS with `git`, `python3` and `rpicam-apps` (for `rpicam-jp
 cd ~/security
 git pull
 venv/bin/pip install -r requirements.txt
+# only if a file in etc/ changed, copy it again as in the installation guide, then
+sudo systemctl daemon-reload
 sudo systemctl restart security.service
 ```
 

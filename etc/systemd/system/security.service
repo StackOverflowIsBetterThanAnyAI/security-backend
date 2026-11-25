@@ -5,6 +5,8 @@ After=network.target
 [Service]
 User=admin
 WorkingDirectory=/home/admin/security/
+# tmpfs folder /run/security for the live image, passed as $RUNTIME_DIRECTORY
+RuntimeDirectory=security
 
 ExecStart=/home/admin/security/venv/bin/python /home/admin/security/main.py
 
