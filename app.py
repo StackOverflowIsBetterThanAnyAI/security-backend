@@ -14,6 +14,7 @@ import threading
 import time
 import zipfile
 
+import service_logs
 import system_stats
 from thumbnails import read_thumbnail
 from folder_data import (
@@ -706,6 +707,17 @@ def delete_user(current_user):
 @token_required(role_minimum="admin")
 def get_system_stats(current_user):
     return jsonify(system_stats.collect())
+
+
+# === Service Logs ===
+@app.route("/admin/logs", methods=["GET"])
+@token_required(role_minimum="admin")
+def get_service_logs(current_user):
+    lines = request.args.get("lines", service_logs.DEFAULT_LINES, type=int)
+    entries = service_logs.read(max(1, min(lines, service_logs.MAX_LINES)))
+    if entries is None:
+        return jsonify({"error": "Logs could not be loaded."}), 500
+    return jsonify({"entries": entries})
 
 
 # === Shutdown ===

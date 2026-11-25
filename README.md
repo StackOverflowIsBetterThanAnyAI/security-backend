@@ -118,6 +118,8 @@ sudo systemctl restart security.service
 
 5. Login Protection: After five failed logins from the same address within 15 minutes, further logins from it are blocked for five minutes (HTTP 429 with a `Retry-After` header). Login tokens are stored as SHA-256 hashes only, so a copy of the database contains no usable tokens.
 
+6. Service Logs: `GET /admin/logs?lines=100` returns the newest entries of `journalctl -u security.service` (at most 500) for the admin tab. The service user must be allowed to read the system journal, which the default user of Raspberry Pi OS is via the group `adm`.
+
 ## Frontend Repository
 
 [Frontend Repository](https://github.com/StackOverflowIsBetterThanAnyAI/security-app)
