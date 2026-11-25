@@ -23,6 +23,9 @@ RPICAM_CMD = [
     "320:180:70",
 ]
 
+CAPTURE_TIMEOUT_SECONDS = 30
+MAX_CAPTURE_FAILURES = 5
+
 
 def prune_archive():
     image_files = sorted(
@@ -40,8 +43,29 @@ def prune_archive():
     return image_files
 
 
+def capture(filename):
+    try:
+        subprocess.run(
+            RPICAM_CMD + ["--output", filename],
+            check=True,
+            timeout=CAPTURE_TIMEOUT_SECONDS,
+        )
+        return True
+    except subprocess.TimeoutExpired:
+        print(f"Camera did not respond within {CAPTURE_TIMEOUT_SECONDS} seconds.")
+    except (OSError, subprocess.CalledProcessError) as e:
+        print(f"Capturing image failed: {e}")
+    # do not serve a half-written image
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
+    return False
+
+
 def capture_images():
     archive_counter = 0
+    failures = 0
     ARCHIVE_INTERVAL = 30
 
     if not os.path.exists(IMAGE_FOLDER_LOCATION):
@@ -55,9 +79,16 @@ def capture_images():
             base_filename = f"security_image_{current_time}.jpg"
 
             live_filename = os.path.join(IMAGE_FOLDER_LOCATION_LIVE, base_filename)
-            command_to_run_live = RPICAM_CMD + ["--output", live_filename]
 
-            subprocess.run(command_to_run_live, check=True)
+            if not capture(live_filename):
+                failures += 1
+                if failures >= MAX_CAPTURE_FAILURES:
+                    raise SystemExit(
+                        f"Camera failed {failures} times in a row, exiting."
+                    )
+                sleep(10)
+                continue
+            failures = 0
 
             all_live_files = sorted(
                 glob.glob(os.path.join(IMAGE_FOLDER_LOCATION_LIVE, "*.jpg"))
@@ -72,15 +103,12 @@ def capture_images():
             if archive_counter % ARCHIVE_INTERVAL == 0:
 
                 archive_filename = os.path.join(IMAGE_FOLDER_LOCATION, base_filename)
-                command_to_run_archive = RPICAM_CMD + ["--output", archive_filename]
+                if capture(archive_filename):
+                    image_files = prune_archive()
 
-                subprocess.run(command_to_run_archive, check=True)
-
-                image_files = prune_archive()
-
-                print(
-                    f"Archive image captured: {archive_filename}. Slots free: {MAX_ARCHIVE_IMAGES - len(image_files)}."
-                )
+                    print(
+                        f"Archive image captured: {archive_filename}. Slots free: {MAX_ARCHIVE_IMAGES - len(image_files)}."
+                    )
 
             archive_counter = (archive_counter + 1) % ARCHIVE_INTERVAL
 

@@ -101,7 +101,7 @@ sudo systemctl restart security.service
 
 3. Image Access Control: Ensures that the sensitive image endpoint is only accessible to users with the member role or better.
 
-4. Raspberry Pi Integration: Captures a live image every 10 seconds and an archive image every 5 minutes, keeping one week (2016 images) of archive images.
+4. Raspberry Pi Integration: Captures a live image every 10 seconds and an archive image every 5 minutes, keeping one week (2016 images) of archive images. If the camera does not respond five times in a row, the service restarts itself.
 
 ## Frontend Repository
 
