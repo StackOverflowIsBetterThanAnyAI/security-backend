@@ -72,7 +72,17 @@ Requires Raspberry Pi OS with `git`, `python3` and `rpicam-apps` (for `rpicam-jp
 
     Then disable the key expiry for `security-pi` in the Tailscale admin console (Machines), otherwise the Pi drops out of the tailnet after 180 days. The backend listens on all interfaces, so it is reachable via Tailscale without further configuration.
 
-7. Optional: keep the system log across reboots to be able to debug hangs, limited to 50 MB:
+7. Enable the hardware watchdog, see [etc/systemd/system.conf.d/watchdog.conf](etc/systemd/system.conf.d/watchdog.conf). If the whole system hangs, the Pi reboots by itself after 15 seconds:
+
+    ```
+    sudo mkdir -p /etc/systemd/system.conf.d
+    sudo cp etc/systemd/system.conf.d/watchdog.conf /etc/systemd/system.conf.d/watchdog.conf
+    sudo systemctl daemon-reexec
+    # should print RuntimeWatchdogUSec=15s
+    systemctl show -p RuntimeWatchdogUSec
+    ```
+
+8. Optional: keep the system log across reboots to be able to debug hangs, limited to 50 MB:
 
     ```
     sudo mkdir -p /var/log/journal
